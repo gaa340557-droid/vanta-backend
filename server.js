@@ -301,6 +301,67 @@ async function scanSubdomainTakeover(url) {
     return out;
 }
 
+// 9. كشف لوحات التحكم (Admin Panel Finder)
+async function scanAdminPanels(url) {
+    const out = [];
+    const base = new URL(url).origin;
+    const adminPaths = ["admin", "administrator", "login", "panel", "dashboard", "manage", "manager", "wp-admin", "wp-login.php", "cpanel", "webadmin", "adminarea", "adminpanel", "admin-console", "controlpanel", "moderator", "users", "sysadmin", "sys-admin", "admin_login", "adminlogin"];
+    await Promise.all(adminPaths.map(async (path) => {
+        try {
+            const r = await safeFetch(`${base}/${path}`, { redirect: 'manual' });
+            if (r.status === 200) {
+                const t = (await r.text()).toLowerCase();
+                if (t.includes('login') || t.includes('password') || t.includes('username') || t.includes('signin')) {
+                    out.push({ type: 'Admin Panel', severity: 'medium', description: `Found Admin Panel: /${path}`, url: `${base}/${path}`, evidence: 'Login form', cvss: 5.3 });
+                }
+            }
+        } catch(e){}
+    }));
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No admin panels found.', url: url, evidence: null, cvss: 0 });
+    return out;
+}
+
+// 10. فحص تسريب البيانات (Data Leak Scanner)
+async function scanDataLeaks(url) {
+    const out = [];
+    try {
+        const r = await safeFetch(url);
+        const body = await r.text();
+        
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+        const emails = body.match(emailRegex) || [];
+        if (emails.length > 0) out.push({ type: 'Data Leak', severity: 'medium', description: `Found ${emails.length} emails in HTML`, url: url, evidence: emails[0], cvss: 5.0 });
+
+        const apiKeyRegex = /(?:api[_-]?key|apikey|secret)["'\s:=]+([a-zA-Z0-9]{16,})/gi;
+        const apiKeys = body.match(apiKeyRegex) || [];
+        if (apiKeys.length > 0) out.push({ type: 'Data Leak', severity: 'high', description: `Found ${apiKeys.length} potential API keys`, url: url, evidence: apiKeys[0], cvss: 7.5 });
+
+        if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No data leaks found.', url: url, evidence: null, cvss: 0 });
+    } catch (e) {
+        out.push({ type: 'Error', severity: 'high', description: 'Failed to connect', url: url, evidence: e.message, cvss: 0 });
+    }
+    return out;
+}
+
+// 11. فحص CORS
+async function scanCORS(url) {
+    const out = [];
+    try {
+        const r = await safeFetch(url, { headers: { 'Origin': 'https://evil.com' } });
+        const allowOrigin = r.headers.get('access-control-allow-origin');
+        const allowCreds = r.headers.get('access-control-allow-credentials');
+        
+        if (allowOrigin === '*' || allowOrigin === 'https://evil.com') {
+            out.push({ type: 'CORS Misconfig', severity: allowCreds === 'true' ? 'critical' : 'medium', description: `CORS allows: ${allowOrigin}`, url: url, evidence: `ACAO: ${allowOrigin}`, cvss: allowCreds === 'true' ? 9.0 : 5.0 });
+        }
+        
+        if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'CORS is secure.', url: url, evidence: null, cvss: 0 });
+    } catch (e) {
+        out.push({ type: 'Error', severity: 'high', description: 'Failed to connect', url: url, evidence: e.message, cvss: 0 });
+    }
+    return out;
+}
+
 app.post('/api/scan', async (req, res) => {
     const { target, checks, intensity } = req.body;
     let url = target;
@@ -317,15 +378,35 @@ app.post('/api/scan', async (req, res) => {
     else if (type === 'ports') findings = await scanPorts(url);
     else if (type === 'gitLeaks') findings = await scanGitLeaks(url);
     else if (type === 'subdomainTakeover') findings = await scanSubdomainTakeover(url);
+    else if (type === 'adminPanels') findings = await scanAdminPanels(url);
+    else if (type === 'dataLeaks') findings = await scanDataLeaks(url);
+    else if (type === 'cors') findings = await scanCORS(url);
     else if (type === 'scanAll') {
         findings = await scanVulnerabilities(url);
         findings = findings.concat(await scanSensitiveFiles(url));
         findings = findings.concat(await scanInjectionAndApi(url));
         findings = findings.concat(await scanGitLeaks(url));
         findings = findings.concat(await scanSubdomainTakeover(url));
+        findings = findings.concat(await scanAdminPanels(url));
+        findings = findings.concat(await scanDataLeaks(url));
+        findings = findings.concat(await scanCORS(url));
     }
     
     res.json({ target: url, timestamp: new Date().toISOString(), findings: findings });
+});
+
+app.post('/api/repeater', async (req, res) => {
+    const { url, method, headers, body } = req.body;
+    try {
+        const r = await safeFetch(url, { method: method || 'GET', headers: headers, body: body });
+        const responseBody = await r.text();
+        const responseHeaders = {};
+        r.headers.forEach((v, k) => { responseHeaders[k] = v; });
+        
+        res.json({ status: r.status, statusText: r.statusText, headers: responseHeaders, body: responseBody });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
