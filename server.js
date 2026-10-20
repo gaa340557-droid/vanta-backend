@@ -8,10 +8,39 @@ app.use(express.json({ limit: '10mb' }));
 
 const TIMEOUT = 15000;
 
+// 1. وظيفة لتحديد السرعة (Concurrency Limit) + User-Agent عشوائي
+const userAgents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+];
+
+function getRandomUA() { return userAgents[Math.floor(Math.random() * userAgents.length)]; }
+
 async function safeFetch(url, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT);
-  try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(timer); }
+  const headers = opts.headers || {};
+  headers['User-Agent'] = headers['User-Agent'] || getRandomUA();
+  
+  try {
+    return await fetch(url, { ...opts, headers, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// دالة لتقسيم المهام (تحديد 20 طلب كحد أقصى)
+async function pool(items, limit, fn) {
+  const queue = [...items];
+  await Promise.all(Array.from({ length: limit }, async () => {
+    while (queue.length) {
+      const item = queue.shift();
+      if (item !== undefined) { try { await fn(item); } catch {} }
+    }
+  }));
 }
 
 // ============================================================
@@ -96,7 +125,7 @@ async function scanVulnerabilities(url) {
 async function scanSensitiveFiles(url) {
     const out = [];
     const base = new URL(url).origin;
-    await Promise.all(sensitiveFiles.map(async (f) => {
+    await pool(sensitiveFiles, 20, async (f) => {
         try {
             const r = await safeFetch(`${base}/${f}`, { redirect: 'manual' });
             if (r.status === 200) {
@@ -106,8 +135,8 @@ async function scanSensitiveFiles(url) {
                     out.push({ type: 'Sensitive File', severity: sev, description: `Exposed: ${f}`, url: `${base}/${f}`, evidence: '200 OK', cvss: sev === 'critical' ? 9.8 : 7.5 });
                 }
             }
-        } catch (e) {}
-    }));
+        } catch(e){}
+    });
     if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No sensitive files found.', url: url, evidence: null, cvss: 0 });
     return out;
 }
@@ -248,7 +277,7 @@ async function scanGitLeaks(url) {
     const out = [];
     const base = new URL(url).origin;
     const gitPaths = [".git/config", ".git/HEAD", ".git/index", ".git/logs/HEAD", ".git/refs/heads/master", ".git/refs/heads/main", ".git/description", ".git/packed-refs"];
-    await Promise.all(gitPaths.map(async (path) => {
+    await pool(gitPaths, 5, async (path) => {
         try {
             const r = await safeFetch(`${base}/${path}`, { redirect: 'manual' });
             if (r.status === 200) {
@@ -258,7 +287,7 @@ async function scanGitLeaks(url) {
                 }
             }
         } catch(e){}
-    }));
+    });
     if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No Git leaks found.', url: url, evidence: null, cvss: 0 });
     return out;
 }
@@ -283,7 +312,7 @@ async function scanSubdomainTakeover(url) {
         "ghost": "The thing you were looking for is no longer here"
     };
 
-    await Promise.all(subdomains.map(async (sub) => {
+    await pool(subdomains, 10, async (sub) => {
         const targetUrl = `https://${sub}.${domain}`;
         try {
             const r = await safeFetch(targetUrl);
@@ -296,17 +325,17 @@ async function scanSubdomainTakeover(url) {
                 }
             }
         } catch(e){}
-    }));
+    });
     if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No subdomain takeover detected.', url: url, evidence: null, cvss: 0 });
     return out;
 }
 
-// 9. كشف لوحات التحكم (Admin Panel Finder)
+// 9. كشف لوحات التحكم
 async function scanAdminPanels(url) {
     const out = [];
     const base = new URL(url).origin;
     const adminPaths = ["admin", "administrator", "login", "panel", "dashboard", "manage", "manager", "wp-admin", "wp-login.php", "cpanel", "webadmin", "adminarea", "adminpanel", "admin-console", "controlpanel", "moderator", "users", "sysadmin", "sys-admin", "admin_login", "adminlogin"];
-    await Promise.all(adminPaths.map(async (path) => {
+    await pool(adminPaths, 10, async (path) => {
         try {
             const r = await safeFetch(`${base}/${path}`, { redirect: 'manual' });
             if (r.status === 200) {
@@ -316,12 +345,12 @@ async function scanAdminPanels(url) {
                 }
             }
         } catch(e){}
-    }));
+    });
     if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No admin panels found.', url: url, evidence: null, cvss: 0 });
     return out;
 }
 
-// 10. فحص تسريب البيانات (Data Leak Scanner)
+// 10. تسريب البيانات
 async function scanDataLeaks(url) {
     const out = [];
     try {
@@ -343,7 +372,7 @@ async function scanDataLeaks(url) {
     return out;
 }
 
-// 11. فحص CORS
+// 11. CORS
 async function scanCORS(url) {
     const out = [];
     try {
@@ -362,6 +391,17 @@ async function scanCORS(url) {
     return out;
 }
 
+// دالة لإزالة التكرار
+function deduplicate(findings) {
+    const seen = new Set();
+    return findings.filter(f => {
+        const key = `${f.type}|${f.url}|${f.description}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
 app.post('/api/scan', async (req, res) => {
     const { target, checks, intensity } = req.body;
     let url = target;
@@ -370,26 +410,32 @@ app.post('/api/scan', async (req, res) => {
     let findings = [];
     const type = checks[0];
 
-    if (type === 'vulnerabilities') findings = await scanVulnerabilities(url);
-    else if (type === 'sensitiveFiles') findings = await scanSensitiveFiles(url);
-    else if (type === 'injectionAndApi') findings = await scanInjectionAndApi(url);
-    else if (type === 'deepAnalysis') findings = await scanDeepAnalysis(url);
-    else if (type === 'dualVerification') findings = await scanDualVerification(url);
-    else if (type === 'ports') findings = await scanPorts(url);
-    else if (type === 'gitLeaks') findings = await scanGitLeaks(url);
-    else if (type === 'subdomainTakeover') findings = await scanSubdomainTakeover(url);
-    else if (type === 'adminPanels') findings = await scanAdminPanels(url);
-    else if (type === 'dataLeaks') findings = await scanDataLeaks(url);
-    else if (type === 'cors') findings = await scanCORS(url);
-    else if (type === 'scanAll') {
-        findings = await scanVulnerabilities(url);
-        findings = findings.concat(await scanSensitiveFiles(url));
-        findings = findings.concat(await scanInjectionAndApi(url));
-        findings = findings.concat(await scanGitLeaks(url));
-        findings = findings.concat(await scanSubdomainTakeover(url));
-        findings = findings.concat(await scanAdminPanels(url));
-        findings = findings.concat(await scanDataLeaks(url));
-        findings = findings.concat(await scanCORS(url));
+    try {
+        if (type === 'vulnerabilities') findings = await scanVulnerabilities(url);
+        else if (type === 'sensitiveFiles') findings = await scanSensitiveFiles(url);
+        else if (type === 'injectionAndApi') findings = await scanInjectionAndApi(url);
+        else if (type === 'deepAnalysis') findings = await scanDeepAnalysis(url);
+        else if (type === 'dualVerification') findings = await scanDualVerification(url);
+        else if (type === 'ports') findings = await scanPorts(url);
+        else if (type === 'gitLeaks') findings = await scanGitLeaks(url);
+        else if (type === 'subdomainTakeover') findings = await scanSubdomainTakeover(url);
+        else if (type === 'adminPanels') findings = await scanAdminPanels(url);
+        else if (type === 'dataLeaks') findings = await scanDataLeaks(url);
+        else if (type === 'cors') findings = await scanCORS(url);
+        else if (type === 'scanAll') {
+            findings = await scanVulnerabilities(url);
+            findings = findings.concat(await scanSensitiveFiles(url));
+            findings = findings.concat(await scanInjectionAndApi(url));
+            findings = findings.concat(await scanGitLeaks(url));
+            findings = findings.concat(await scanSubdomainTakeover(url));
+            findings = findings.concat(await scanAdminPanels(url));
+            findings = findings.concat(await scanDataLeaks(url));
+            findings = findings.concat(await scanCORS(url));
+        }
+        
+        findings = deduplicate(findings);
+    } catch (e) {
+        findings.push({ type: 'Server Error', severity: 'high', description: e.message, url: url, evidence: null, cvss: 0 });
     }
     
     res.json({ target: url, timestamp: new Date().toISOString(), findings: findings });
