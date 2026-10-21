@@ -32,7 +32,6 @@ async function safeFetch(url, opts = {}) {
   }
 }
 
-// دالة لتقسيم المهام (تحديد 20 طلب كحد أقصى)
 async function pool(items, limit, fn) {
   const queue = [...items];
   await Promise.all(Array.from({ length: limit }, async () => {
@@ -391,7 +390,44 @@ async function scanCORS(url) {
     return out;
 }
 
-// دالة لإزالة التكرار
+// 12. robots.txt و sitemap.xml
+async function scanRobotsAndSitemap(url) {
+    const out = [];
+    const base = new URL(url).origin;
+    
+    // robots.txt
+    try {
+        const r = await safeFetch(`${base}/robots.txt`);
+        if (r.status === 200) {
+            const txt = await r.text();
+            if (txt.length > 10) {
+                out.push({ type: 'Robots.txt', severity: 'info', description: 'robots.txt is exposed', url: `${base}/robots.txt`, evidence: txt.slice(0, 100), cvss: 0 });
+                const disallow = txt.match(/Disallow:\s*(\S+)/gi) || [];
+                for (const d of disallow) {
+                    const path = d.split(':')[1].trim();
+                    if (path && path !== '/') {
+                        out.push({ type: 'Hidden Path', severity: 'medium', description: `Hidden path in robots.txt: ${path}`, url: `${base}${path}`, evidence: 'From robots.txt', cvss: 4.0 });
+                    }
+                }
+            }
+        }
+    } catch(e){}
+
+    // sitemap.xml
+    try {
+        const r = await safeFetch(`${base}/sitemap.xml`);
+        if (r.status === 200) {
+            const txt = await r.text();
+            if (txt.length > 10) {
+                out.push({ type: 'Sitemap', severity: 'info', description: 'sitemap.xml is exposed', url: `${base}/sitemap.xml`, evidence: txt.slice(0, 100), cvss: 0 });
+            }
+        }
+    } catch(e){}
+
+    if (out.length === 0) out.push({ type: 'Info', severity: 'info', description: 'No robots.txt or sitemap found.', url: url, evidence: null, cvss: 0 });
+    return out;
+}
+
 function deduplicate(findings) {
     const seen = new Set();
     return findings.filter(f => {
@@ -422,6 +458,7 @@ app.post('/api/scan', async (req, res) => {
         else if (type === 'adminPanels') findings = await scanAdminPanels(url);
         else if (type === 'dataLeaks') findings = await scanDataLeaks(url);
         else if (type === 'cors') findings = await scanCORS(url);
+        else if (type === 'robotsSitemap') findings = await scanRobotsAndSitemap(url);
         else if (type === 'scanAll') {
             findings = await scanVulnerabilities(url);
             findings = findings.concat(await scanSensitiveFiles(url));
@@ -431,6 +468,7 @@ app.post('/api/scan', async (req, res) => {
             findings = findings.concat(await scanAdminPanels(url));
             findings = findings.concat(await scanDataLeaks(url));
             findings = findings.concat(await scanCORS(url));
+            findings = findings.concat(await scanRobotsAndSitemap(url));
         }
         
         findings = deduplicate(findings);
