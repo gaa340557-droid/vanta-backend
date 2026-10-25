@@ -1,6 +1,6 @@
 {
   "name": "vanta",
-  "version": "2.3.1",
+  "version": "2.5.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -14,7 +14,7 @@
     "winston": "^3.11.0",
     "jsonwebtoken": "^9.0.2",
     "stripe": "^14.10.0",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
     "libphonenumber-js": "^1.10.51"
   }
 }
