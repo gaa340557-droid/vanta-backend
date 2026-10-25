@@ -143,65 +143,58 @@ app.post('/api/scan', auth, async (req, res) => {
 // ============================================================
 // 3. PHONE OSINT MODULE
 // ============================================================
-const COUNTRY_CODES = {
-  '970': { country: 'Palestine', iso: 'PS' },
-  '972': { country: 'Israel', iso: 'IL' },
-  '962': { country: 'Jordan', iso: 'JO' },
-  '20': { country: 'Egypt', iso: 'EG' },
-  '966': { country: 'Saudi Arabia', iso: 'SA' },
-  '971': { country: 'UAE', iso: 'AE' },
-  '1': { country: 'USA/Canada', iso: 'US' },
-  '44': { country: 'UK', iso: 'GB' },
-  '90': { country: 'Turkey', iso: 'TR' },
-  '49': { country: 'Germany', iso: 'DE' },
-  '33': { country: 'France', iso: 'FR' }
-};
+// ============================================================
+// 3. PHONE OSINT MODULE (Real lookup)
+// ============================================================
+const { parsePhoneNumberFromString } = require('libphonenumber-js');
 
 app.post('/api/osint/phone', auth, async (req, res) => {
   try {
     const { number } = req.body;
     if (!number) return res.status(400).json({ error: 'Phone number required' });
     
-    // Clean the number
-    const clean = number.replace(/[^0-9]/g, '');
-    let countryInfo = null;
-    let carrier = 'Unknown';
-    
-    // Check country code
-    for (const code of ['970', '972', '962', '966', '971', '44', '90', '49', '33', '1', '20']) {
-      if (clean.startsWith(code)) {
-        countryInfo = COUNTRY_CODES[code];
-        break;
-      }
+    // Clean the number (keep + and numbers only)
+    let clean = number.replace(/[^\d+]/g, '');
+    if (!clean.startsWith('+')) {
+        if (clean.startsWith('00')) clean = '+' + clean.slice(2);
+        else if (clean.startsWith('0')) clean = '+970' + clean.slice(1); // Default to PS if no code
+        else clean = '+' + clean;
     }
 
-    // Mock Carrier Detection (للأغراض التعليمية، بيتم ربطه بـ API حقيقي لاحقاً)
-    if (clean.startsWith('97059') || clean.startsWith('97056')) carrier = 'Jawwal / Ooredoo (PS)';
-    else if (clean.startsWith('9725')) carrier = 'Partner / Cellcom (IL)';
-    else if (clean.startsWith('9627')) carrier = 'Zain / Orange (JO)';
+    const phoneNumber = parsePhoneNumberFromString(clean);
     
-    // استخدام مكتبة phone (إذا مسموح)
-    let validFormat = false;
-    try {
-      const p = phone(clean);
-      if (p.isValid) validFormat = true;
-    } catch (e) {}
+    if (!phoneNumber || !phoneNumber.isValid()) {
+        return res.json({
+            query: number,
+            clean: clean,
+            valid: false,
+            error: 'Invalid phone number format.'
+        });
+    }
+
+    let countryName = phoneNumber.country;
+    // Convert country code (PS) to full name
+    const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+    if (countryName) countryName = regionNames.of(countryName);
 
     res.json({
       query: number,
-      clean: clean,
-      validFormat,
-      country: countryInfo ? countryInfo.country : 'Unknown',
-      iso: countryInfo ? countryInfo.iso : 'Unknown',
-      carrier: carrier,
-      lineType: clean.length === 12 ? 'Mobile' : 'Unknown',
-      breachCheck: 'N/A (Requires premium API)',
+      clean: phoneNumber.number,
+      valid: true,
+      country: countryName || 'Unknown',
+      iso: phoneNumber.country || 'Unknown',
+      carrier: phoneNumber.carrier || 'Unknown (Requires paid API)',
+      lineType: phoneNumber.getType() || 'Unknown', // mobile, fixed_line, etc.
+      formatNational: phoneNumber.formatNational(),
+      formatInternational: phoneNumber.formatInternational(),
       socialLinks: {
-        whatsapp: `https://wa.me/${clean}`,
-        telegram: `https://t.me/+${clean}`
+        whatsapp: `https://wa.me/${phoneNumber.number.replace('+', '')}`,
+        telegram: `https://t.me/+${phoneNumber.number.replace('+', '')}`
       }
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { 
+    res.status(500).json({ error: 'Server error parsing number: ' + e.message }); 
+  }
 });
 
 // ============================================================
