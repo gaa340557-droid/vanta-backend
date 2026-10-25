@@ -15,5 +15,6 @@
     "jsonwebtoken": "^9.0.2",
     "stripe": "^14.10.0",
     "ws": "^8.16.0"
+    "libphonenumber-js": "^1.10.51"
   }
 }
