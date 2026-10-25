@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  vanta:
+    build: .
+    ports: ["8443:8443"]
+    environment:
+      - DATA_KEY=change-me-to-random-32-chars
+      - JWT_SECRET=change-me-jwt
+      - BOT_SECRET=change-me-bot
+      - STRIPE_KEY=sk_test_xxx
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
